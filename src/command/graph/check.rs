@@ -2,6 +2,7 @@ use serde::Serialize;
 use structopt::StructOpt;
 
 use rover_client::operations::graph::check::{self, GraphCheckInput};
+use rover_client::operations::graph::async_check::{self, CheckSchemaAsyncInput};
 use rover_client::shared::{CheckConfig, GitContext, GraphRef, ValidationPeriod};
 
 use crate::command::RoverOutput;
@@ -44,6 +45,10 @@ pub struct Check {
     /// Size of the time window with which to validate schema against (i.e "24h" or "1w 2d 5h")
     #[structopt(long)]
     validation_period: Option<ValidationPeriod>,
+
+    /// If the check should be run asynchronously
+    #[structopt(long="async", short="a")]
+    asynchronous: bool,
 }
 
 impl Check {
@@ -61,21 +66,37 @@ impl Check {
             "Checking the proposed schema against metrics from {}",
             &self.graph
         );
-
-        let res = check::run(
-            GraphCheckInput {
-                graph_ref: self.graph.clone(),
-                proposed_schema,
-                git_context,
-                config: CheckConfig {
-                    query_count_threshold: self.query_count_threshold,
-                    query_count_threshold_percentage: self.query_percentage_threshold,
-                    validation_period: self.validation_period.clone(),
+        if self.asynchronous {
+            let res = async_check::run(
+                CheckSchemaAsyncInput {
+                    graph_ref: self.graph.clone(),
+                    proposed_schema,
+                    git_context,
+                    config: CheckConfig {
+                        validation_period: self.validation_period.clone(),
+                        query_count_threshold: self.query_count_threshold,
+                        query_count_threshold_percentage: self.query_percentage_threshold,
+                    },
                 },
-            },
-            &client,
-        )?;
+                &client,
+            )?;
+            Ok(RoverOutput::AsyncCheckResponse(res))
+        } else {
+            let res = check::run(
+                GraphCheckInput {
+                    graph_ref: self.graph.clone(),
+                    proposed_schema,
+                    git_context,
+                    config: CheckConfig {
+                        query_count_threshold: self.query_count_threshold,
+                        query_count_threshold_percentage: self.query_percentage_threshold,
+                        validation_period: self.validation_period.clone(),
+                    },
+                },
+                &client,
+            )?;
 
-        Ok(RoverOutput::CheckResponse(res))
+            Ok(RoverOutput::CheckResponse(res))
+        }
     }
 }
