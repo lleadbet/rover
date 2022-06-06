@@ -52,7 +52,7 @@ pub struct Check {
     validation_period: Option<ValidationPeriod>,
 
     /// If the check should be run asynchronously
-    #[structopt(long="async", short="a")]
+    #[structopt(long = "async", short = "a")]
     asynchronous: bool,
 }
 
@@ -105,7 +105,6 @@ impl Check {
                 },
                 &client,
             )?;
-    
             Ok(RoverOutput::CheckResponse(res))
         }
     }
