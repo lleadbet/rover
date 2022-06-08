@@ -47,8 +47,8 @@ pub struct Check {
     validation_period: Option<ValidationPeriod>,
 
     /// If the check should be run asynchronously
-    #[structopt(long = "async", short = "a")]
-    asynchronous: bool,
+    #[structopt(long = "background")]
+    background: bool,
 }
 
 impl Check {
@@ -66,37 +66,38 @@ impl Check {
             "Checking the proposed schema against metrics from {}",
             &self.graph
         );
-        if self.asynchronous {
-            let res = async_check::run(
-                CheckSchemaAsyncInput {
-                    graph_ref: self.graph.clone(),
-                    proposed_schema,
-                    git_context,
-                    config: CheckConfig {
-                        validation_period: self.validation_period.clone(),
-                        query_count_threshold: self.query_count_threshold,
-                        query_count_threshold_percentage: self.query_percentage_threshold,
-                    },
+        let res_check_async = async_check::run(
+            CheckSchemaAsyncInput {
+                graph_ref: self.graph.clone(),
+                proposed_schema,
+                git_context,
+                config: CheckConfig {
+                    validation_period: self.validation_period.clone(),
+                    query_count_threshold: self.query_count_threshold,
+                    query_count_threshold_percentage: self.query_percentage_threshold,
                 },
-                &client,
-            )?;
-            Ok(RoverOutput::AsyncCheckResponse(res))
+            },
+            &client,
+        )?;
+        if self.background {
+            // check fetch status
+            
+            // let res = check::run(
+            //     GraphCheckInput {
+            //         graph_ref: self.graph.clone(),
+            //         proposed_schema,
+            //         git_context,
+            //         config: CheckConfig {
+            //             query_count_threshold: self.query_count_threshold,
+            //             query_count_threshold_percentage: self.query_percentage_threshold,
+            //             validation_period: self.validation_period.clone(),
+            //         },
+            //     },
+            //     &client,
+            // )?;
+            // Ok(RoverOutput::CheckResponse(res))
         } else {
-            let res = check::run(
-                GraphCheckInput {
-                    graph_ref: self.graph.clone(),
-                    proposed_schema,
-                    git_context,
-                    config: CheckConfig {
-                        query_count_threshold: self.query_count_threshold,
-                        query_count_threshold_percentage: self.query_percentage_threshold,
-                        validation_period: self.validation_period.clone(),
-                    },
-                },
-                &client,
-            )?;
-
-            Ok(RoverOutput::CheckResponse(res))
+            Ok(RoverOutput::AsyncCheckResponse(res))
         }
     }
 }
